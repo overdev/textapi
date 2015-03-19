@@ -8,7 +8,7 @@ __all__ = [
 
 class Caret(object):
 
-    # text nav operations
+    # text navigation operations
     MOVPREVCHAR = 1
     MOVNEXTCHAR = 2
     MOVPREVLINE = 3
@@ -21,6 +21,8 @@ class Caret(object):
     MOVLINEEND  = 10
     MOVPAGEUP   = 11
     MOVPAGEDOWN = 12
+    MOVPAGETOP  = 13
+    MOVPAGEBOTTOM = 14
 
     # text selection operations
     SELPREVCHAR = 1
@@ -52,14 +54,25 @@ class Caret(object):
     MODINSERTTAB     = 12
     MODDELSELECTION  = 13
     MODMOVESELECTION = 14
+    
+    # utility text operations
+    UTLGETSELECTION = 1
+    
+    # advanced text operations
+    ADVSAVETOFILE   = 1
+    ADVSAVETOMEM    = 2
+    ADVOPENFROMFILE = 3
+    ADVOPENFROMMEM  = 4
 
     # option flags
     AUTOINDENT = 1
     DEDENTONBKSPC = 2
     WHITESPACEHOME = 4
+    TRIMMTRAILSPACES = 8
 
     __slots__ = ('line', 'column', 'indent', 'memcol', 'options',
-                 'sline', 'scolumn', 'selecting', 'page_size')
+                 'sline', 'scolumn', 'selecting', 'page_size',
+                 'indent_tokens', 'dedent_tokens')
 
     def __init__(self, indent=4, flags=AUTOINDENT|DEDENTONBKSPC):
         self._line = 0
@@ -72,11 +85,15 @@ class Caret(object):
         self.selecting = False
         self._page_size = [80, 20]
         self._page_pos = [0, 0]
+        self.indent_tokens = []
+        self.dedent_tokens = []
 
     def memorize(self):
+        """Saves the current caret column index."""
         self.memcol = self.column
 
     def start_selection(self):
+        """Sets the 'selecting' attribute and saves the current caret position."""
         if not self.selecting:
             self.sline = self.line
             self.scolumn = self.column
@@ -84,6 +101,13 @@ class Caret(object):
 
     @property
     def line(self):
+        """Gets or sets the line index.
+        
+        Note that only the minimum value (zero) is corrected automatically
+        in this class. The maximum value (the number of lines) must be 
+        corrected in the StrList object itself, as it length may grow or
+        shrink in time.
+        """
         return self._line
 
     @line.setter
@@ -97,6 +121,13 @@ class Caret(object):
 
     @property
     def column(self):
+        """Gets or sets the column index.
+        
+        Like the line property, only the minimum value is corrected
+        automatically. The maximum value (the length of the string)
+        depends on the current string being referred by the
+        StrList object.
+        """
         return self._column
 
     @column.setter
@@ -110,6 +141,10 @@ class Caret(object):
 
     @property
     def page_size(self):
+        """Gets or sets the size of the text page in (column, line) terms.
+        
+        The page_size affects how the text scrolls and how it should be
+        displayed in regions smaller than its size."""
         return self._page_size[:]
 
     @page_size.setter
@@ -119,6 +154,16 @@ class Caret(object):
 
     @property
     def page_pos(self):
+        """Gets or sets the position of the text page in (column, line) terms.
+        
+        Used along with the page_size property it can be used to get a
+        rectangular grid reflecting the viewing area of the text. The
+        page_pos property indicates the top-left position of the page.
+        
+        Note that, in this context, 'page' refers to text navigation only.
+        The visual aspect of the text (the text rendering and display)
+        should be treated in other place(s).
+        """
         return self._page_pos[:]
 
     @page_pos.setter
@@ -126,7 +171,29 @@ class Caret(object):
         self._page_pos[0] = int(value[0])
         self._page_pos[1] = int(value[1])
 
+    @property
+    def page_first_line(self):
+        """Gets the index of the top line of the page."""
+        return self.page_pos[1]
+
+    @property
+    def page_last_line(self):
+        """Gets the index of the bottom line of the page."""
+        return self.page_first_line + self.page_size[1]
+
+    @property
+    def next_page_line(self):
+        """Gets the line index one page after the current value."""
+        return self.line + (self.page_height[1] - 1)
+    
+    @property
+    def prev_page_line(self):
+        """Gets the line index one page befor the current value."""
+        return max(0, self.line - (self.page_height[1]) - 1)
+
+
     def page_scroll(self, hscroll, vscroll):
+        """Sets the page position relative to its current location."""
         self.page_pos[0] = max(0, self.page_pos[0] + hscroll)
         self.page_pos[1] = max(0, self.page_pos[1] + vscroll)
 
@@ -137,9 +204,9 @@ class StrList(object):
 
     __slots__ = ('lines', 'caret')
 
-    def __init__(self):
+    def __init__(self, caret):
         self.lines = []
-        self.caret = Caret()
+        self.caret = caret
 
     def __len__(self):
         return len(self.lines)
@@ -168,70 +235,90 @@ class StrList(object):
 
     @property
     def is_first_line(self):
+        """Gets whether the current line is the first line."""
         return self.caret.line == 0
 
     @property
     def is_last_line(self):
+        """Gets whether the current line index is the index of
+        the last line of text."""
         return self.caret.line == len(self) - 1
 
     @property
+    def last_line(self):
+        """Gets the last line index of the text."""
+        return len(self) - 1
+
+    @property
+    def last_column(self):
+        """Gets the last column index of the current line index.
+        
+        Note that the last column is always equal to the length
+        of the string."""
+        return len(self.current_line)
+
+    @property
     def current_line(self):
+        """Gets the string of the current line index."""
         ind = max(0, min(len(self.lines)-1, self.caret.line))
         return self.lines[ind]
 
-    @property
-    def current_length(self):
-        return len(self.current_line)
-
     def get_indent_length(self, line_str):
+        """Returns the indentation level of the given string."""
+        # TODO: find a better way to calculate the indent level.
         for i, ch in enumerate(line):
             if ch != ' ':
                 return i
 
     def correct_column(self, line_index):
-        self.caret.column = max(0, min(self.caret.memcol, len(self[line_index]))) 
+        """Places the caret column index in a valid position."""
+        self.caret.column = max(0, min(self.caret.memcol, len(self[line_index])))
 
     def mov_operation(self, op):
-        # RIGHT
+        """Performs text navigation operations.
+        
+        The operations performed in this method does not modify the
+        contents of the text object."""
+        # RIGHT arrow key
         if op == Caret.MOVNEXTCHAR:
-            if self.caret.column < self.current_length:
+            if self.caret.column < self.last_column:
                 self.caret.column += 1
             elif not self.is_last_line:
                 self.caret.line += 1
                 self.caret.column = 0
             self.caret.memorize()
 
-        # LEFT
+        # LEFT arrow key
         elif op == Caret.MOVPREVCHAR:
             if self.caret.column > 0:
                 self.caret.column -= 1
             elif not self.is_first_line:
                 self.caret.line -= 1
-                self.caret.column = len(self[self.caret.line])
+                self.caret.column = self.last_column
             self.caret.memorize()
 
-        # UP
+        # UP arrow key
         elif op == Caret.MOVPREVLINE:
             if not self.is_first_line:
                 self.caret.line -= 1
                 self.correct_column(self.caret.line)
 
-        # DOWN
+        # DOWN arrow key
         elif op == Caret.MOVNEXTLINE:
             if not self.is_last_line:
                 self.caret.line += 1
                 self.correct_column(self.caret.line)
 
-        # CTRL+HOME
+        # CTRL+HOME keys
         elif op == Caret.MOVTEXTHOME:
             self.caret.line = 0
             self.caret.column = 0
             self.caret.memorize()
 
-        # CTRL+END
+        # CTRL+END keys
         elif op == Caret.MOVTEXTEND:
             self.caret.line = len(self) - 1
-            self.caret.column = len(self[self.caret.line])
+            self.caret.column = self.last_column
             self.caret.memorize()
 
         # HOME
@@ -241,13 +328,12 @@ class StrList(object):
 
         # END
         elif op == Caret.MOVLINEEND:
-            self.caret.column = len(self[self.caret.line])
+            self.caret.column = self.last_column
             self.caret.memorize()
 
         # PAGEUP
         elif op == Caret.MOVPAGEUP:
-            jump = self.caret.page_size[1] - 1
-            self.caret.line -= jump
+            self.caret.line = self.caret.prev_page_line()
             self.correct_column(self.caret.line)
 
         # PAGEDOWN
@@ -262,12 +348,13 @@ class StrList(object):
             self.correct_column(self.caret.line)
 
         # CTRL+PAGEDOWN
-        elif op == Caret.MOVPAGEBOTOM:
+        elif op == Caret.MOVPAGEBOTTOM:
             jump = (self.caret.page_pos[1] + self.caret.page_size[1]) - 1
             self.caret.line = min(len(self) - 1, jump)
             self.correct_column(self.caret.line)
 
     def sel_operation(self, op):
+        """"""
         # SHIFT+LEFT
         if op == Caret.SELPREVCHAR:
             self.caret.start_selection()
@@ -382,7 +469,7 @@ class StrList(object):
             pass
         # DELETE
         elif op == Caret.MODDELETECHAR:
-            if self.caret.column < self.current_length:
+            if self.caret.column < self.last_column:
                 l, r = self.split_line(self.caret.line, self.caret.pos)
                 if len(r) in (0, 1):
                     r = ''
