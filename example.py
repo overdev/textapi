@@ -15,14 +15,14 @@ import pygame.locals as c
 
 def normalize_color(color):
     """Gets a 3-tuple RGB and return a 0..1 float value"""
-    return ((color[2] << 16 | color[1] << 8 | color[0]) & 0xFFFFFF) / 16777215.0
+    return (color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
 
 def blend_color(a, b, r):
     """blends color a and b in r ratio."""
     return (
-        int(a[0] + (b[0] - a[0]) * r),
-        int(a[1] + (b[1] - a[1]) * r),
-        int(a[2] + (b[2] - a[2]) * r)
+        int(a[0] + (b[0] - a[0]) * r[0]),
+        int(a[1] + (b[1] - a[1]) * r[0]),
+        int(a[2] + (b[2] - a[2]) * r[0])
     )
 
 
@@ -106,8 +106,8 @@ def program():
     pygame.init()
 
     surface = pygame.display.set_mode([800, 400])
-    backcolor = (192, 192, 192)
-    forecolor = (0, 0, 255)
+    forecolor = (255, 255, 255)
+    backcolor = (0, 0, 0)
 
     BmpFont.set_colors(forecolor, backcolor)
 
@@ -116,7 +116,7 @@ def program():
     textbox.lines = [
         u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^",
         u"First line of text",
-        u"!01203",
+        u"!01203 / $ % @",
         u"Another line of text",
         u"This time, a very extense and useless line of unicode string.",
         u"A (not so long, not so short) line of text."
