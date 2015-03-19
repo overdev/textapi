@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+__author__ = 'Jorge'
 
 __all__ = [
     'Caret',
@@ -54,8 +55,8 @@ class Caret(object):
     MODINSERTNEWLINE = 11
     MODINSERTTAB     = 12
     MODDELSELECTION  = 13
-    MODMOVESELECTION = 14
-    
+    MODMOVSELECTION = 14
+
     # utility text operations
     UTLGETSELECTION = 1
     
@@ -263,10 +264,10 @@ class StrList(object):
         ind = max(0, min(len(self.lines)-1, self.caret.line))
         return self.lines[ind]
 
-    def get_indent_length(self, line_str):
-        """Returns the indentation level of the given string."""
+    def get_indent_length(self, line_index):
+        """Returns the indentation level of the given line."""
         # TODO: find a better way to calculate the indent level.
-        for i, ch in enumerate(line_str):
+        for i, ch in enumerate(self[line_index]):
             if ch != ' ':
                 return i
 
