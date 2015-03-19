@@ -13,42 +13,33 @@ from . import *
 import pygame.locals as c
 
 
+def normalize_color(color):
+    """Gets a 3-tuple RGB and return a 0..1 float value"""
+    return ((color[2] << 16 | color[1] << 8 | color[0]) & 0xFFFFFF) / 16777215.0
+
+def blend_color(a, b, r):
+    """blends color a and b in r ratio."""
+    return (
+        int(a[0] + (b[0] - a[0]) * r),
+        int(a[1] + (b[1] - a[1]) * r),
+        int(a[2] + (b[2] - a[2]) * r)
+    )
+
+
 class BmpFont(object):
-
-    @staticmethod
-    def normalize_color(color):
-        """Gets a 3-tuple RGB and return a 0..1 float value"""
-        return ((color[2] << 16 | color[1] << 8 | color[0]) & 0xFFFFFF) / 16777215.0
-
-    @staticmethod
-    def blend_color(a, b, r):
-        """blends color a and b in r ratio."""
-        return (
-            int(a[0] + (b[0] - a[0]) * r),
-            int(a[1] + (b[1] - a[1]) * r),
-            int(a[2] + (b[2] - a[2]) * r)
-        )
 
     image = pygame.image.load(os.path.join(os.getcwd(), "res/CBFG_Consolas_24x16_cp1252.png"))
     glyph_size = (24, 16)
     glyphs = u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~_¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
     def_palette = image.get_palette()
-    nrm_palette = [0 for i in range(256)]
+    nrm_palette = [normalize_color(color) for color in def_palette]
     advance = 10
-
-    @classmethod
-    def initialize(cls):
-        cls.image = pygame.image.load(os.path.join(os.getcwd(), "res/CBFG_Consolas_24x16_cp1252.png"))
-        cls.glyph_size = (16, 24)
-        cls.glyphs = u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~_¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
-        cls.def_palette = cls.image.get_palette()
-        cls.nrm_palette = [cls.normalize_color(color) for color in cls.def_palette]
 
     @classmethod
     def set_colors(cls, forecolor, backcolor):
         for index in range(256):
             ratio = cls.nrm_palette[index]
-            cls.image.set_palette_at(index, cls.blend_color(backcolor, forecolor, ratio))
+            cls.image.set_palette_at(index, blend_color(backcolor, forecolor, ratio))
 
     @classmethod
     def get_texglyph(cls, glyph):
@@ -90,8 +81,57 @@ class TextBox(StrList):
     def render(self, surface):
         firstline = self.caret.page_pos[1]
         lastline = min(len(self), firstline + self.caret.page_size[1])
-        for index, line in enumerate(self[firstline: lastline + 1]):
-            firstcolumn = self.caret.page_pos[0]
-            lastcolumn = min(len(line), firstcolumn + self.caret.page_size[0])
+        firstcolumn = self.caret.page_pos[0]
 
-            text = line[firstcolumn, lastcolumn]
+        caretline = (self.caret.line - firstline) * BmpFont.glyph_size[1]
+        caretcolumn = (self.caret.column - firstcolumn) * BmpFont.advance
+
+        x, y = self.position
+        for index, line in enumerate(self[firstline: lastline + 1]):
+            lastcolumn = min(len(line), firstcolumn + self.caret.page_size[0])
+            BmpFont.render(surface, line[firstcolumn: lastcolumn], (x, y))
+            y += BmpFont.glyph_size[1]
+
+        pygame.draw.line(
+            surface,
+            (128, 128, 128),
+            (caretcolumn, caretline),
+            (caretcolumn, caretline + BmpFont.glyph_size[1]),
+            2
+        )
+
+
+def program():
+
+    pygame.init()
+
+    surface = pygame.display.set_mode([800, 600])
+    backcolor = (192, 192, 192)
+    forecolor = (0, 0, 255)
+
+    BmpFont.set_colors(forecolor, backcolor)
+
+    clock = pygame.time.Clock()
+    textbox = TextBox((0, 0), (40, 10))
+    textbox.lines = [
+        u"First line of text",
+        u"Another line of text",
+        u"This time, a very extense and useless line of unicode string.",
+        u"A (not so long, not so short) line of text."
+    ]
+
+    done = False
+
+    while not done:
+        for event in pygame.event.get():
+            if event.type == c.QUIT:
+                done = True
+
+            elif event.type == c.KEYDOWN:
+                pass
+
+        clock.tick(30)
+        textbox.render(surface)
+
+if __name__ == '__main__':
+    program()
