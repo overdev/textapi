@@ -6,6 +6,7 @@ __all__ = [
     'StrList'
 ]
 
+
 class Caret(object):
 
     # text navigation operations
@@ -70,11 +71,11 @@ class Caret(object):
     WHITESPACEHOME = 4
     TRIMMTRAILSPACES = 8
 
-    __slots__ = ('line', 'column', 'indent', 'memcol', 'options',
-                 'sline', 'scolumn', 'selecting', 'page_size',
-                 'indent_tokens', 'dedent_tokens')
+    #__slots__ = ('_line', '_column', 'indent', 'memcol', 'options',
+    #             'sline', 'scolumn', 'selecting', 'page_size',
+    #             'indent_tokens', 'dedent_tokens')
 
-    def __init__(self, indent=4, flags=AUTOINDENT|DEDENTONBKSPC):
+    def __init__(self, indent=4, flags= AUTOINDENT | DEDENTONBKSPC):
         self._line = 0
         self._column = 0
         self.memcol = 0
@@ -184,13 +185,12 @@ class Caret(object):
     @property
     def next_page_line(self):
         """Gets the line index one page after the current value."""
-        return self.line + (self.page_height[1] - 1)
+        return self.line + (self.page_size[1] - 1)
     
     @property
     def prev_page_line(self):
         """Gets the line index one page befor the current value."""
-        return max(0, self.line - (self.page_height[1]) - 1)
-
+        return max(0, self.line - (self.page_size[1]) - 1)
 
     def page_scroll(self, hscroll, vscroll):
         """Sets the page position relative to its current location."""
@@ -215,7 +215,7 @@ class StrList(object):
         return iter(self.lines)
 
     def __getitem__(self, key):
-        return self.items[key]
+        return self.lines[key]
 
     def __setitem__(self, key, value):
         """StrList has strict use of setitem method.
@@ -223,11 +223,11 @@ class StrList(object):
         if isinstance(key, int):
             if not isinstance(value, (str, unicode)):
                 raise ValueError("str or unicode string expected.")
-            self.items[key] = unicode(value)
+            self.lines[key] = unicode(value)
         else:
             raise KeyError("int key expected.")
 
-    def __delitem__(self):
+    def __delitem__(self, key):
         del self.lines[key]
 
     def __contains__(self, item):
@@ -266,7 +266,7 @@ class StrList(object):
     def get_indent_length(self, line_str):
         """Returns the indentation level of the given string."""
         # TODO: find a better way to calculate the indent level.
-        for i, ch in enumerate(line):
+        for i, ch in enumerate(line_str):
             if ch != ' ':
                 return i
 
@@ -455,7 +455,7 @@ class StrList(object):
             elif not self.is_first_line:
                 left = self[self.caret.line - 1]
                 right = self[self.caret.line]
-                self[self.caret.line -1] = unicode('{}{}'.format(left, right))
+                self[self.caret.line - 1] = unicode('{}{}'.format(left, right))
                 del self[self.caret.line]
                 self.caret.line -= 1
                 self.caret.column = len(left)
@@ -532,6 +532,3 @@ class StrList(object):
             right = ''
 
         return left, right
-
-
-
