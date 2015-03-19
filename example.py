@@ -9,7 +9,7 @@ __all__ = [
 
 import os
 import pygame
-from . import *
+from __init__ import *
 import pygame.locals as c
 
 
@@ -29,7 +29,7 @@ def blend_color(a, b, r):
 class BmpFont(object):
 
     image = pygame.image.load(os.path.join(os.getcwd(), "res/CBFG_Consolas_24x16_cp1252.png"))
-    glyph_size = (24, 16)
+    glyph_size = (16, 24)
     glyphs = u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~_¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
     def_palette = image.get_palette()
     nrm_palette = [normalize_color(color) for color in def_palette]
@@ -46,7 +46,7 @@ class BmpFont(object):
         if glyph not in cls.glyphs:
             return (0, 0) + (cls.advance, cls.glyph_size[1])
 
-        gy, gx = divmod(cls.glyphs.find(glyph), cls.glyph_size[0])
+        gy, gx = divmod(cls.glyphs.index(glyph), 32)
 
         return (gx * cls.glyph_size[0], gy * cls.glyph_size[1], cls.advance, cls.glyph_size[1])
 
@@ -83,10 +83,10 @@ class TextBox(StrList):
         lastline = min(len(self), firstline + self.caret.page_size[1])
         firstcolumn = self.caret.page_pos[0]
 
-        caretline = (self.caret.line - firstline) * BmpFont.glyph_size[1]
-        caretcolumn = (self.caret.column - firstcolumn) * BmpFont.advance
-
         x, y = self.position
+        caretline = y + (self.caret.line - firstline) * BmpFont.glyph_size[1]
+        caretcolumn = x + (self.caret.column - firstcolumn) * BmpFont.advance
+
         for index, line in enumerate(self[firstline: lastline + 1]):
             lastcolumn = min(len(line), firstcolumn + self.caret.page_size[0])
             BmpFont.render(surface, line[firstcolumn: lastcolumn], (x, y))
@@ -105,16 +105,18 @@ def program():
 
     pygame.init()
 
-    surface = pygame.display.set_mode([800, 600])
+    surface = pygame.display.set_mode([800, 400])
     backcolor = (192, 192, 192)
     forecolor = (0, 0, 255)
 
     BmpFont.set_colors(forecolor, backcolor)
 
     clock = pygame.time.Clock()
-    textbox = TextBox((0, 0), (40, 10))
+    textbox = TextBox((50, 50), (40, 10))
     textbox.lines = [
+        u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^",
         u"First line of text",
+        u"!01203",
         u"Another line of text",
         u"This time, a very extense and useless line of unicode string.",
         u"A (not so long, not so short) line of text."
@@ -128,10 +130,19 @@ def program():
                 done = True
 
             elif event.type == c.KEYDOWN:
-                pass
+                if event.key == c.K_UP:
+                    textbox.mov_operation(Caret.MOVPREVLINE)
+                elif event.key == c.K_DOWN:
+                    textbox.mov_operation(Caret.MOVNEXTLINE)
+                elif event.key == c.K_RIGHT:
+                    textbox.mov_operation(Caret.MOVNEXTCHAR)
+                elif event.key == c.K_LEFT:
+                    textbox.mov_operation(Caret.MOVPREVCHAR)
 
         clock.tick(30)
+        surface.fill((0, 0, 0))
         textbox.render(surface)
+        pygame.display.flip()
 
 if __name__ == '__main__':
     program()
