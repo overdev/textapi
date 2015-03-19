@@ -202,6 +202,9 @@ sdist/
 develop-eggs/
 .installed.cfg
 
+# Pycharm project files >:-(
+.idea/
+
 # Installer logs
 pip-log.txt
 
