@@ -14,15 +14,15 @@ import pygame.locals as c
 
 
 def normalize_color(color):
-    """Gets a 3-tuple RGB and return a 0..1 float value"""
+    """Gets a 3-tuple of RGB ints and return a 3-tuple of unity floats"""
     return (color[0] / 255.0, color[1] / 255.0, color[2] / 255.0)
 
 def blend_color(a, b, r):
     """blends color a and b in r ratio."""
     return (
         int(a[0] + (b[0] - a[0]) * r[0]),
-        int(a[1] + (b[1] - a[1]) * r[0]),
-        int(a[2] + (b[2] - a[2]) * r[0])
+        int(a[1] + (b[1] - a[1]) * r[1]),
+        int(a[2] + (b[2] - a[2]) * r[2])
     )
 
 
@@ -84,8 +84,8 @@ class TextBox(StrList):
         firstcolumn = self.caret.page_pos[0]
 
         x, y = self.position
-        caretline = y + (self.caret.line - firstline) * BmpFont.glyph_size[1]
-        caretcolumn = x + (self.caret.column - firstcolumn) * BmpFont.advance
+        caretline = y + ((self.caret.line - firstline) * BmpFont.glyph_size[1])
+        caretcolumn = x + ((self.caret.column - firstcolumn) * BmpFont.advance)
 
         for index, line in enumerate(self[firstline: lastline + 1]):
             lastcolumn = min(len(line), firstcolumn + self.caret.page_size[0])
@@ -106,10 +106,17 @@ def program():
     pygame.init()
 
     surface = pygame.display.set_mode([800, 400])
-    forecolor = (255, 255, 255)
+    forecolor = (255, 0, 255)
     backcolor = (0, 0, 0)
 
     BmpFont.set_colors(forecolor, backcolor)
+
+    print forecolor
+    print BmpFont.nrm_palette[5]
+    print BmpFont.def_palette[5]
+    print BmpFont.image.get_palette_at(5)
+
+    pygame.key.set_repeat(250, 50)
 
     clock = pygame.time.Clock()
     textbox = TextBox((50, 50), (40, 10))
@@ -140,7 +147,7 @@ def program():
                     textbox.mov_operation(Caret.MOVPREVCHAR)
 
         clock.tick(30)
-        surface.fill((0, 0, 0))
+        surface.fill(backcolor)
         textbox.render(surface)
         pygame.display.flip()
 

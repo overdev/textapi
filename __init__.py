@@ -117,9 +117,9 @@ class Caret(object):
         self._line = max(0, int(value))
         if not (self.page_pos[1] <= self._line < self.page_pos[1] + self.page_size[1]):
             if self._line < self.page_pos[1]:
-                self.page_pos[1] = self._line
+                self._page_pos[1] = self._line
             else:
-                self.page_pos[1] = self._line - self.page_size[1]
+                self._page_pos[1] = self._line - self.page_size[1]
 
     @property
     def column(self):
@@ -137,9 +137,9 @@ class Caret(object):
         self._column = max(0, int(value))
         if not (self.page_pos[0] <= self._column < self.page_pos[0] + self.page_size[0]):
             if self._column < self.page_pos[0]:
-                self.page_pos[0] = self._column
+                self._page_pos[0] = self._column
             else:
-                self.page_pos[0] = self._column - self.page_size[0]
+                self._page_pos[0] = self._column - self.page_size[0]
 
     @property
     def page_size(self):
