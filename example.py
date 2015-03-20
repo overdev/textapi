@@ -78,7 +78,16 @@ class TextBox(StrList):
     def position(self, value):
         self.position = value[0], value[1]
 
-    def render(self, surface):
+    def render(self, surface, backcolor=(0, 0, 0)):
+
+        left = self.position[0] -1
+        top = self.position[1] - 1
+        width = (self.caret.page_size[0] * BmpFont.advance) + 2
+        height = (self.caret.page_size[1] * BmpFont.glyph_size[1]) + 2
+
+        pts = [(left, top), (left + width, top), (left + width, top + height), (left, top + height)]
+        pygame.draw.polygon(surface, backcolor, pts)
+
         firstline = self.caret.page_pos[1]
         lastline = min(len(self), firstline + self.caret.page_size[1])
         firstcolumn = self.caret.page_pos[0]
@@ -94,11 +103,12 @@ class TextBox(StrList):
 
         pygame.draw.line(
             surface,
-            (128, 128, 128),
+            (255, 0, 0),
             (caretcolumn, caretline),
             (caretcolumn, caretline + BmpFont.glyph_size[1]),
             2
         )
+        pygame.draw.polygon(surface, (255, 255, 255), pts, 1)
 
 
 def program():
@@ -106,27 +116,27 @@ def program():
     pygame.init()
 
     surface = pygame.display.set_mode([800, 400])
-    forecolor = (255, 0, 255)
-    backcolor = (0, 0, 0)
+    forecolor = (0, 0, 0)
+    backcolor = (255, 255, 255)
 
     BmpFont.set_colors(forecolor, backcolor)
 
-    print forecolor
-    print BmpFont.nrm_palette[5]
-    print BmpFont.def_palette[5]
-    print BmpFont.image.get_palette_at(5)
 
     pygame.key.set_repeat(250, 50)
 
     clock = pygame.time.Clock()
     textbox = TextBox((50, 50), (40, 10))
     textbox.lines = [
-        u" !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^",
-        u"First line of text",
-        u"!01203 / $ % @",
-        u"Another line of text",
-        u"This time, a very extense and useless line of unicode string.",
-        u"A (not so long, not so short) line of text."
+        u"THIS EXAMPLE DEMONSTRATES THE USE OF THE StrList CLASS.",
+        u"",
+        u"In this example, basic text navigation is supported.",
+        u"Also, is uses the 'page_size' attribute of the Caret",
+        u"class to acomodate the text properly.",
+        u"In this example, the following commands are supported:",
+        u"[UP], [DOWN], [LEFT], [RIGHT] keys to move the caret",
+        u"a single character or line.",
+        u"[HOME], [END] keys to move the caret to the beginning or",
+        u"or the end of the current line."
     ]
 
     done = False
@@ -145,10 +155,20 @@ def program():
                     textbox.mov_operation(Caret.MOVNEXTCHAR)
                 elif event.key == c.K_LEFT:
                     textbox.mov_operation(Caret.MOVPREVCHAR)
+                elif event.key == c.K_HOME:
+                    textbox.mov_operation(Caret.MOVLINEHOME)
+                elif event.key == c.K_END:
+                    textbox.mov_operation(Caret.MOVLINEEND)
 
         clock.tick(30)
-        surface.fill(backcolor)
-        textbox.render(surface)
+        surface.fill((192, 192, 192))
+
+        BmpFont.set_colors((0, 0, 0), (192, 192, 192))
+        BmpFont.render(surface, u"Use the arrow keys to navigate in the text.", (5, 5))
+
+        BmpFont.set_colors(forecolor, backcolor)
+        textbox.render(surface, backcolor)
+
         pygame.display.flip()
 
 if __name__ == '__main__':
