@@ -14,16 +14,16 @@ A `Strlist` object performs text operations for the following keyboard commands:
    * <kbd>CTRL</kbd> + (<kbd>BACSPACE</kbd> or <kbd>DELETE</kbd>) to delete the word at the left or right of the caret;
    * Many more.
 
+###Things `textapi` *can't* do:
+- `textapi` offers no functions for visual rendering or `StrList` objects;
+- `StrList` objects are not font or input-method aware; it does not take the character dimensions into account when the caret moves and does not care about what/how text is being typed in.
+
 ###TODOs:
 * implement text selection operations;
 * add copy/paste support;
 * add find/replace functionality;
 * add save/load of text files and
 * some basic code optimizations.
-
-###Things `textapi` *can't* do:
-- `textapi` offers no functions for visual rendering or `StrList` objects;
-- `StrList` objects are not font or input-method aware; it does not take the character dimensions into account when the caret moves and does not care about what/how text is being typed in.
 
 ###Try it out with pygame
 If you have [pygame] installed, you can try the **example.py** wich demonstrates how `textapi` can be used.
