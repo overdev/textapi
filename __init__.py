@@ -420,43 +420,47 @@ class StrList(object):
             self.caret.selecting = False
 
     def mod_operation(self, op, text, pos=None):
+        # Any character typed in insert mode
         if op == Caret.MODINSERTCHAR:
-            l, r = self.split_line(self.caret.line, self.caret.pos)
-            self[self.caret.line] = unicode('{}{}{}'.format(l, text, r))
+            l, r = self.split_line(self.caret.line, self.caret.column)
+            self[self.caret.line] = u'{}{}{}'.format(l, text, r)
             self.caret.column += 1
             self.caret.memorize()
 
+        # Any character type in overwrite mode
         elif op == Caret.MODREPLACECHAR:
-            l, r = self.split_line(self.caret.line, self.caret.pos)
+            l, r = self.split_line(self.caret.line, self.caret.column)
             if len(r) in (0, 1):
                 r = ''
             else:
                 r = r[1:]
-            self[self.caret.line] = unicode('{}{}{}'.format(l, text, r))
+            self[self.caret.line] = u'{}{}{}'.format(l, text, r)
             self.caret.column += 1
             self.caret.memorize()
 
+        # TODO: verify the real utility of Caret.MODINSERTWORD operation in the future.
         elif op == Caret.MODINSERTWORD:
             pass
 
+        # CTRL+V (Paste)
         elif op == Caret.MODINSERTLINE:
             pass
 
         # BACKSPACE
         elif op == Caret.MODERASECHAR:
             if self.caret.column > 0:
-                l, r = self.split_line(self.caret.line, self.caret.pos)
+                l, r = self.split_line(self.caret.line, self.caret.column)
                 if len(l) in (0, 1):
                     l = ''
                 else:
                     l = l[:-1]
-                self[self.caret.line] = unicode('{}{}{}'.format(l, text, r))
+                self[self.caret.line] = u'{}{}'.format(l, r)
                 self.caret.column -= 1
 
             elif not self.is_first_line:
                 left = self[self.caret.line - 1]
                 right = self[self.caret.line]
-                self[self.caret.line - 1] = unicode('{}{}'.format(left, right))
+                self[self.caret.line - 1] = u'{}{}'.format(left, right)
                 del self[self.caret.line]
                 self.caret.line -= 1
                 self.caret.column = len(left)
@@ -465,18 +469,59 @@ class StrList(object):
 
         # CTRL+BACKSPACE
         elif op == Caret.MODERASEWORD:
-            pass
+            # Rules:
+            # - erase the closest non-whitespace characters at the left of the caret.
+            # - erase any whitespace character before the non-whitespace ones.
+            # - join the previous line if the beginning of the line is reached before any
+            #   non-whitespace and stop there.
+            whitespaces = u" \n\t"
+            column = self.caret.column
+            endcolumn = column
+            line = self.current_line
+            can_stop = False
+            while column >= 0:
+                if column == 0 and can_stop is False:
+                    # join the previous line
+                    if not self.is_first_line:
+                        left = self[self.caret.line - 1]
+                        right = line[self.caret.column:]
+                        self[self.caret.line - 1] = u'{}{}'.format(left, right)
+
+                        del self[self.caret.line]
+                        self.caret.line -= 1
+                    # erase whatever is on the left side of the caret
+                    else:
+                        self[self.caret.line] = line[self.caret.column:]
+                        self.caret.column = 0
+                        self.caret.memorize()
+                    break
+
+                if line[column] not in whitespaces:
+                    # break the loop at the first whitespace char found or at the line beginning.
+                    can_stop = True
+                else:
+                    if can_stop:
+                        left = line[0: column]
+                        right = line[endcolumn:]
+                        self[self.caret.line] = u'{}{}'.format(left, right)
+                        self.caret.column = len(left)
+                        self.caret.memorize()
+                        break
+                column -= 1
+
+        # TODO: verify the real utility of Caret.MODERASELINE operation in the future.
         elif op == Caret.MODERASELINE:
             pass
+
         # DELETE
         elif op == Caret.MODDELETECHAR:
             if self.caret.column < self.last_column:
-                l, r = self.split_line(self.caret.line, self.caret.pos)
+                l, r = self.split_line(self.caret.line, self.caret.column)
                 if len(r) in (0, 1):
                     r = ''
                 else:
                     r = r[1:]
-                self[self.caret.line] = unicode('{}{}{}'.format(l, text, r))
+                self[self.caret.line] = unicode('{}{}'.format(l, r))
 
             elif not self.is_last_line:
                 left = self[self.caret.line]
@@ -488,7 +533,36 @@ class StrList(object):
 
         # CTRL+DELETE
         elif op == Caret.MODDELETEWORD:
-            pass
+            # Rules:
+            # - Delete any non-whitespace character at the right until a whitespace character is found.
+            # - or -
+            # - Delete any whitespace character at the right until a non-whitespace character is found.
+            # - if the caret is at the end of line, simply join with the next line (if any).
+            string = self.current_line
+            column = self.caret.column
+            if self.last_column == column:
+                if not self.is_last_line:
+                    left = string
+                    right = self[self.caret.line + 1]
+                    self[self.caret.line] = u"{}{}".format(left, right)
+                    del self[self.caret.line + 1]
+            else:
+                whitespaces = u' \n\t'
+                that = string[column] in whitespaces
+                stop_column = column
+                deleted = False
+                for ch in string[column:]:
+                    this = ch in whitespaces
+                    if this != that:
+                        left = string[:column]
+                        right = string[stop_column:]
+                        self[self.caret.line] = u"{}{}".format(left, right)
+                        deleted = True
+                        break
+                    stop_column += 1
+                if not deleted:
+                    # just remove whatever on the caret's right side
+                    self[self.caret.line] = string[:column]
 
         # SHIFT+DELETE
         elif op == Caret.MODDELETELINE:
@@ -514,7 +588,15 @@ class StrList(object):
 
         # TAB
         elif op == Caret.MODINSERTTAB:
-            pass
+            tablen = self.caret.indent - (self.caret.column % self.caret.indent)
+            line = self[self.caret.line]
+            column = self.caret.column
+            tab = u' ' * tablen
+            left = line[:column]
+            right = line[column:]
+            self[self.caret.line] = u'{}{}{}'.format(left, tab, right)
+            self.caret.column += tablen
+
         elif op == Caret.MODDELSELECTION:
             pass
         elif op == Caret.MODMOVSELECTION:

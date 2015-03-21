@@ -80,7 +80,7 @@ class TextBox(StrList):
 
     def render(self, surface, backcolor=(0, 0, 0)):
 
-        left = self.position[0] -1
+        left = self.position[0] - 1
         top = self.position[1] - 1
         width = (self.caret.page_size[0] * BmpFont.advance) + 2
         height = (self.caret.page_size[1] * BmpFont.glyph_size[1]) + 2
@@ -121,8 +121,7 @@ def program():
 
     BmpFont.set_colors(forecolor, backcolor)
 
-
-    pygame.key.set_repeat(250, 50)
+    pygame.key.set_repeat(250, 33)
 
     clock = pygame.time.Clock()
     textbox = TextBox((50, 50), (40, 10))
@@ -147,7 +146,35 @@ def program():
                 done = True
 
             elif event.type == c.KEYDOWN:
-                if event.key == c.K_UP:
+                ctrl  = event.mod & c.KMOD_LCTRL or event.mod & c.KMOD_RCTRL
+                shift = event.mod & c.KMOD_LSHIFT or event.mod & c.KMOD_RSHIFT
+                alt   = event.mod & c.KMOD_LALT or event.mod & c.KMOD_RALT
+                none  = not ctrl and not shift and not alt
+                ctrl_only  = ctrl and not shift and not alt
+                shift_only = shift and not ctrl and not alt
+                alt_olny   = alt and not ctrl and not shift
+
+                if event.key == c.K_DELETE:
+                    if none:
+                        textbox.mod_operation(Caret.MODDELETECHAR, None)
+
+                    elif ctrl_only:
+                        textbox.mod_operation(Caret.MODDELETEWORD, None)
+
+                    elif shift_only:
+                        textbox.mod_operation(Caret.MODDELETELINE, None)
+
+                elif event.key == c.K_BACKSPACE:
+                    if none:
+                        textbox.mod_operation(Caret.MODERASECHAR, None)
+
+                    elif ctrl_only:
+                        textbox.mod_operation(Caret.MODERASEWORD, None)
+
+                elif event.key == c.K_RETURN:
+                    pass
+
+                elif event.key == c.K_UP:
                     textbox.mov_operation(Caret.MOVPREVLINE)
                 elif event.key == c.K_DOWN:
                     textbox.mov_operation(Caret.MOVNEXTLINE)
@@ -155,10 +182,37 @@ def program():
                     textbox.mov_operation(Caret.MOVNEXTCHAR)
                 elif event.key == c.K_LEFT:
                     textbox.mov_operation(Caret.MOVPREVCHAR)
+
+                elif event.key == c.K_PAGEUP:
+                    if none:
+                        pass
+
+                elif event.key == c.K_PAGEDOWN:
+                    if none:
+                        pass
+
+                elif event.key == c.K_ESCAPE:
+                    pass
+
                 elif event.key == c.K_HOME:
-                    textbox.mov_operation(Caret.MOVLINEHOME)
+                    if none:
+                        textbox.mov_operation(Caret.MOVLINEHOME)
+                    elif ctrl_only:
+                        textbox.mov_operation(Caret.MOVTEXTHOME)
+
                 elif event.key == c.K_END:
-                    textbox.mov_operation(Caret.MOVLINEEND)
+                    if none:
+                        textbox.mov_operation(Caret.MOVLINEEND)
+
+                    elif ctrl_only:
+                        textbox.mov_operation(Caret.MOVTEXTEND)
+
+                elif event.key in (c.K_LCTRL, c.K_RCTRL, c.K_RSHIFT, c.K_LSHIFT, c.K_LALT, c.K_RALT):
+                    pass
+                else:
+                    if none or shift_only:
+                        if event.unicode in BmpFont.glyphs and event.unicode != '':
+                            textbox.mod_operation(Caret.MODINSERTCHAR, event.unicode)
 
         clock.tick(30)
         surface.fill((192, 192, 192))
