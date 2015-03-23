@@ -175,9 +175,25 @@ def program():
                     pass
 
                 elif event.key == c.K_UP:
-                    textbox.mov_operation(Caret.MOVPREVLINE)
+                    if none:
+                        textbox.mov_operation(Caret.MOVPREVLINE)
+
+                    elif ctrl_only:
+                        textbox.mov_operation(Caret.MOVUPSCROLL)
+
+                    elif shift_only:
+                        textbox.sel_operation(Caret.SELPREVLINE)
+
                 elif event.key == c.K_DOWN:
-                    textbox.mov_operation(Caret.MOVNEXTLINE)
+                    if none:
+                        textbox.mov_operation(Caret.MOVNEXTLINE)
+
+                    elif ctrl_only:
+                        textbox.mov_operation(Caret.MOVDOWNSCROLL)
+
+                    elif shift_only:
+                        textbox.sel_operation(Caret.SELNEXTLINE)
+
                 elif event.key == c.K_RIGHT:
                     textbox.mov_operation(Caret.MOVNEXTCHAR)
                 elif event.key == c.K_LEFT:
@@ -197,8 +213,12 @@ def program():
                 elif event.key == c.K_HOME:
                     if none:
                         textbox.mov_operation(Caret.MOVLINEHOME)
+
                     elif ctrl_only:
                         textbox.mov_operation(Caret.MOVTEXTHOME)
+
+                    elif shift_only:
+                        textbox.sel_operation(Caret.SELLINEHOME)
 
                 elif event.key == c.K_END:
                     if none:
@@ -207,6 +227,9 @@ def program():
                     elif ctrl_only:
                         textbox.mov_operation(Caret.MOVTEXTEND)
 
+                    elif shift_only:
+                        textbox.sel_operation(Caret.SELLINEEND)
+
                 elif event.key in (c.K_LCTRL, c.K_RCTRL, c.K_RSHIFT, c.K_LSHIFT, c.K_LALT, c.K_RALT):
                     pass
                 else:
@@ -214,11 +237,29 @@ def program():
                         if event.unicode in BmpFont.glyphs and event.unicode != '':
                             textbox.mod_operation(Caret.MODINSERTCHAR, event.unicode)
 
+                    elif ctrl_only:
+                        if event.key == c.K_x:
+                            # Cut command goes here...
+                            pass
+
+                        if event.key == c.K_c:
+                            # Copy command goes here...
+                            pass
+
+                        elif event.key == c.K_v:
+                            # Paste command goes here...
+                            pass
+
+
         clock.tick(30)
         surface.fill((192, 192, 192))
 
         BmpFont.set_colors((0, 0, 0), (192, 192, 192))
         BmpFont.render(surface, u"Use the arrow keys to navigate in the text.", (5, 5))
+
+        if textbox.has_selection:
+            for n, line in enumerate(textbox.get_selection()):
+                BmpFont.render(surface, line, (540, 10 + (n * BmpFont.glyph_size[1])))
 
         BmpFont.set_colors(forecolor, backcolor)
         textbox.render(surface, backcolor)

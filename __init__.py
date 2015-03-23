@@ -25,6 +25,8 @@ class Caret(object):
     MOVPAGEDOWN = 12
     MOVPAGETOP  = 13
     MOVPAGEBOTTOM = 14
+    MOVUPSCROLL   = 15
+    MOVDOWNSCROLL = 16
 
     # text selection operations
     SELPREVCHAR = 1
@@ -264,6 +266,55 @@ class StrList(object):
         ind = max(0, min(len(self.lines)-1, self.caret.line))
         return self.lines[ind]
 
+    @property
+    def has_selection(self):
+        """Gets whether there's text selected."""
+        if self.caret.selecting:
+            return self.caret.sline != self.caret.line or self.caret.scolumn != self.caret.column
+        return False
+
+    def get_selection(self):
+        """Returns a sequence of strings reflecting the text selected, or None."""
+
+        if self.caret.line < self.caret.sline:
+            startline = self.caret.line
+            endline = self.caret.sline
+            startcolumn = self.caret.column
+            endcolumn = self.caret.scolumn
+        elif self.caret.line > self.caret.sline:
+            startline = self.caret.sline
+            endline = self.caret.line
+            startcolumn = self.caret.scolumn
+            endcolumn = self.caret.column
+        else:
+            startline = endline = self.caret.line
+            if self.caret.column > self.caret.scolumn:
+                startcolumn = self.caret.scolumn
+                endcolumn = self.caret.column
+            elif self.caret.column < self.caret.scolumn:
+                startcolumn = self.caret.column
+                endcolumn = self.caret.scolumn
+            else:
+                return
+
+        numlines = endline - startline
+        if numlines == 0:
+            return [self[startline][startcolumn: endcolumn + 1]]
+        elif numlines == 1:
+            return [
+                self[startline][startcolumn:],
+                self[endline][:endcolumn]
+            ]
+        else:
+            lines = [self[startline][startcolumn:]]
+
+            for i in range(startline + 1, endline):
+                lines.append(self[i])
+
+            lines.append(self[endline][:endcolumn])
+
+            return lines
+
     def get_indent_length(self, line_index):
         """Returns the indentation level of the given line."""
         # TODO: find a better way to calculate the indent level.
@@ -310,11 +361,24 @@ class StrList(object):
                 self.caret.line += 1
                 self.correct_column(self.caret.line)
 
+        # CTRL + DOWN keys
+        elif op == Caret.MOVDOWNSCROLL:
+            halfpage = self.caret.page_size[1] / 2
+            if self.caret.page_pos[1] < self.last_line - halfpage:
+                self.caret.page_scroll(0, 1)
+
+        # CTRL + UP keys
+        elif op == Caret.MOVUPSCROLL:
+            if self.caret.page_pos[1] > 0:
+                self.caret.page_scroll(0, -1)
+
         # CTRL+HOME keys
         elif op == Caret.MOVTEXTHOME:
             self.caret.line = 0
             self.caret.column = 0
             self.caret.memorize()
+
+        # TODO: add CTRL+LEFT, CTRL+RIGHT commands
 
         # CTRL+END keys
         elif op == Caret.MOVTEXTEND:
